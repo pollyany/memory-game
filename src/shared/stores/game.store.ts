@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { GameService } from '../services/game.service'
 import { Challenge, GameResult, GameState } from './../utils/challenge'
 
 interface GameStore extends GameState {
@@ -31,16 +32,59 @@ export const useGameStore = create<GameStore>((set, get) => ({
   startedAt: null,
   timeRemaining: 0,
 
-  initGame: () => {},
-  finishGame: () => null,
-  resetMismatchedCards: () => {},
+  initGame: (challenge: Challenge) => {
+    const gameState = GameService.initializeGame(challenge)
+    set(gameState)
+  },
+  finishGame: () => {
+    const currentState = get()
+    const result = GameService.finishGame(currentState)
+
+    return result
+  },
+  resetMismatchedCards: () => {
+    const currentState = get()
+    const newState = GameService.resetMismatchedCards(currentState)
+    set(newState)
+  },
   selectCard: (cardId: string) => {},
-  startGame: () => {},
+  startGame: () => {
+    const currentState = get()
+    const newState = GameService.startGame(currentState)
+    set(newState)
+  },
 
   // timer
-  tick: () => {},
-  startTimer: () => {},
-  stopTimer: () => {},
+  tick: () => {
+    const currentState = get()
+    const newState = GameService.tick(currentState)
+    set(newState)
+
+    if (newState.status === 'timeout') {
+      get().stopTimer()
+    }
+  },
+  startTimer: () => {
+    const currentState = get()
+
+    if (currentState._timerId) {
+      clearInterval(currentState._timerId)
+    }
+
+    const timerId = setInterval(() => {
+      get().tick()
+    }, 1000)
+
+    set({ _timerId: timerId })
+  },
+  stopTimer: () => {
+    const currentState = get()
+
+    if (currentState._timerId) {
+      clearInterval(currentState._timerId)
+      set({ _timerId: null })
+    }
+  },
   _timerId: null,
 
   // Ciclo de vida
